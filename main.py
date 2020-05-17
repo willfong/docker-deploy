@@ -137,7 +137,7 @@ def main():
 
 logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(message)s', level=logging.INFO)
 
-DOCKER_DEFAULT_NAME="app1"
+DOCKER_DEFAULT_NAME="app"
 
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"

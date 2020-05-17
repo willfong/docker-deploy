@@ -15,17 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      CONTAINER_IMAGE: docker-overlord:${{github.sha::7}}
+      CONTAINER_NAME: docker-overlord
+      CONTAINER_HASH: ${GITHUB_SHA:7}
     
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag $DOCKER_USERNAME/$CONTAINER_IMAGE
+      run: docker build . --file Dockerfile --tag $DOCKER_USERNAME/$CONTAINER_NAME:$CONTAINER_HASH
     
     - name: Set up Docker Hub
       run: echo $DOCKER_TOKEN | docker login --username=$DOCKER_USERNAME --password-stdin
     
     - name: Push to Docker Hub
-      run: docker push $DOCKER_USERNAME/$CONTAINER_IMAGE
+      run: docker push $DOCKER_USERNAME/$CONTAINER_NAME:$CONTAINER_HASH

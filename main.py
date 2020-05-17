@@ -6,21 +6,21 @@ import requests
 import time
 import yaml
 
-#logging = logging.getLogger(__name__)
-#myFormatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
-logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(message)s', level=logging.INFO)
-
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
 
-'''
-client = docker.DockerClient(base_url='unix://run/docker.sock')
-containers = client.containers.list()
-for container in containers:
-    print(f"{container.id}\t{container.name}")
-'''
+logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(message)s', level=logging.INFO)
+
+DOCKER_DEFAULT_NAME="app1"
+
+# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
+AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"
+AWS_REGION_ID="http://169.254.169.254/latest/meta-data/placement/availability-zone"
+
+aws_ecr_client = boto3.client('ecr', region_name=aws_region_id())
+docker_client = docker.DockerClient(base_url='unix://run/docker.sock')
 
 def aws_region_id():
     response = requests.get(AWS_REGION_ID)
@@ -47,8 +47,9 @@ def docker_find_images(repository):
     return docker_client.images.list(name=repository)
 
 def docker_pull_image(repositoryUri):
+    logging.info(f"Pulling Image: {repositoryUri}")
     if not docker_client.images.pull(repositoryUri):
-        logging.error(f"[ERROR] Coud not pull: {repositoryUri}")
+        logging.error(f"Coud not pull: {repositoryUri}")
         return False
     return True
 
@@ -62,21 +63,25 @@ def docker_stop_containers():
     logging.info("Stopping containers...")
     containers = docker_containers()
     for container in containers:
-        logging.info(f"  {container.name}")
-        container.stop()
-        container.wait()
+        try:
+            logging.info(f"  {container.name}")
+            container.stop()
+        except docker.errors.APIError as err:
+            logging.error(f"Error stopping containers: {err}")
+        except:
+            logging.error(f"Error stopping containers: Unknown error")
+
     logging.info("Waiting for containers to finish")
     # The wait() above should block, but didn't. Putting in manual sleep until debug
     time.sleep(10)
     while len(docker_containers()) > 0:
         logging.info("...")
-        time.sleep(10)
+        time.sleep(60)
     
-
 def finish():
     logging.info("Done. Sleeps...zzz")
     logging.info("--------------------------------------")
-    time.sleep(10)
+    time.sleep(60)
 
 def deploy(instance_id):
     payload = {"id": instance_id}
@@ -98,7 +103,7 @@ def deploy(instance_id):
     username, password = _get_username_password_from_token(aws_token)
     #print(password)
     if docker_login(username, password, overlord['details'][0]['repositoryUri'].split('/')[0]):
-        logging.debug("Logged in!")
+        logging.debug("Logged into Docker!")
     if len(images) == 0:
         logging.info(f"[INFO] Fresh install. No previous instance of: {overlord['details'][0]['repositoryUri']}")
         docker_pull_image(full_uri)
@@ -115,11 +120,13 @@ def deploy(instance_id):
         if not found:        
             logging.info(f"Image not found: {image_tag}")
             docker_pull_image(full_uri)
+    logging.info("Getting existing containers")
     containers = docker_containers()
     # There should only be one container named "app", but let's use a loop for now,
     #  and handle errors later when the solution is better defined
     currently_running = False
     for container in containers:
+        logging.info(f"Checking Container: {container.name}")
         for images in container.image.tags:
             if image_tag in images:
                 currently_running = True
@@ -127,28 +134,17 @@ def deploy(instance_id):
     if currently_running:
         logging.info("The current app is already running")
     else:
-        logging.info("it's not running. Let's start it!")
+        logging.info("App is not running. Let's start it!")
         config = yaml.load(overlord['deployed']['config'], Loader=Loader)
         logging.info(f"Using Config: {config}")
         docker_start_container(image_tag, config)
     
 def main():
-    #instance_id = aws_instance_id()
-    instance_id = 'i-071096d81d569fa6d'
+    instance_id = aws_instance_id()
     logging.info(f"Instance ID: {instance_id}")
     while True:
         deploy(instance_id)
         finish()
-
-
-# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
-
-AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"
-DOCKER_DEFAULT_NAME="app1"
-#AWS_REGION_ID="http://169.254.169.254/latest/meta-data/placement/availability-zone"
-aws_ecr_client = boto3.client('ecr', region_name='ap-southeast-1')
-docker_client = docker.DockerClient(base_url='unix://run/docker.sock')
-
 
 if __name__ == "__main__":
     main()

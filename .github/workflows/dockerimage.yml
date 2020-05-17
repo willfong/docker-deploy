@@ -1,0 +1,38 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ master ]
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+  CONTAINER_IMAGE: docker-deploy
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      
+    - name: Get Short SHA
+      id: vars
+      run: |
+       echo ::set-output name=sha7::$(git rev-parse --short=7 ${{ github.sha }})
+
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag $DOCKER_USERNAME/$CONTAINER_IMAGE:$SHA7
+      env:
+        SHA7: ${{ steps.vars.outputs.sha7 }}
+    
+    - name: Set up Docker Hub
+      run: echo $DOCKER_TOKEN | docker login --username=$DOCKER_USERNAME --password-stdin
+    
+    - name: Push to Docker Hub
+      run: docker push $DOCKER_USERNAME/$CONTAINER_IMAGE:$SHA7
+      env:
+        SHA7: ${{ steps.vars.outputs.sha7 }}

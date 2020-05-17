@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      CONTAINER_IMAGE: docker-overlord:${GITHUB_SHA::7}
+      CONTAINER_IMAGE: docker-overlord:${{github.sha::7}}
     
     steps:
     - name: Checkout

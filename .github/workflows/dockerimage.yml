@@ -7,7 +7,7 @@ on:
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-  CONTAINER_IMAGE: docker-overlord:${{ github.sha::7 }}
+  CONTAINER_IMAGE: docker-overlord:${GITHUB_SHA::7}
 
 jobs:
 

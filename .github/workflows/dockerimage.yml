@@ -7,14 +7,16 @@ on:
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-  CONTAINER_IMAGE: docker-overlord:${GITHUB_SHA::7}
 
 jobs:
 
   build:
 
     runs-on: ubuntu-latest
-
+    
+    env:
+      CONTAINER_IMAGE: docker-overlord:${GITHUB_SHA::7}
+    
     steps:
     - name: Checkout
       uses: actions/checkout@v2

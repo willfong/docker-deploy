@@ -11,17 +11,6 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(message)s', level=logging.INFO)
-
-DOCKER_DEFAULT_NAME="app1"
-
-# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
-AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"
-AWS_REGION_ID="http://169.254.169.254/latest/meta-data/placement/availability-zone"
-
-aws_ecr_client = boto3.client('ecr', region_name=aws_region_id())
-docker_client = docker.DockerClient(base_url='unix://run/docker.sock')
-
 def aws_region_id():
     response = requests.get(AWS_REGION_ID)
     return response.text[:-1]
@@ -145,6 +134,17 @@ def main():
     while True:
         deploy(instance_id)
         finish()
+
+logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(message)s', level=logging.INFO)
+
+DOCKER_DEFAULT_NAME="app1"
+
+# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
+AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"
+AWS_REGION_ID="http://169.254.169.254/latest/meta-data/placement/availability-zone"
+
+aws_ecr_client = boto3.client('ecr', region_name=aws_region_id())
+docker_client = docker.DockerClient(base_url='unix://run/docker.sock')
 
 if __name__ == "__main__":
     main()

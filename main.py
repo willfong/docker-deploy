@@ -66,7 +66,19 @@ def docker_stop_containers():
     while len(docker_containers()) > 0:
         logging.info("...")
         time.sleep(60)
-    
+
+def yaml_to_config(y):
+    if not y:
+        logging.info("Config is empty")
+        return {}
+    try:
+        r = yaml.load(y, Loader=Loader)
+    except:
+        logging.info("Error loading config. Is it misconfigured?")
+        logging.info(y)
+        return False
+    return r
+
 def finish():
     logging.info("Done. Sleeps...zzz")
     logging.info("--------------------------------------")
@@ -128,7 +140,8 @@ def deploy(instance_id):
         logging.info("The current app is already running")
     else:
         logging.info("App is not running. Let's start it!")
-        config = yaml.load(overlord['deployed']['config'], Loader=Loader)
+        #TODO: Check config before stopping
+        config = yaml_to_config(overlord['deployed']['config'])
         logging.info(f"Using Config: {config}")
         docker_start_container(image_tag, config)
     

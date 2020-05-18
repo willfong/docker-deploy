@@ -76,10 +76,14 @@ def deploy(instance_id):
     payload = {"id": instance_id}
     repository_details = requests.get("https://deploy.davao.io/api/deploy/instance", params=payload)
     overlord = repository_details.json()
+    if not overlord.get("deployed"):
+        logging.info("No Deployment Details!")
+        return False
     logging.debug(overlord)
     if len(overlord['details']) != 1:
         logging.error(f"[ERROR] Didn't receive one repository detail. Instance: {instance_id}")
         logging.error(overlord)
+        return False
     full_uri = f"{overlord['details'][0]['repositoryUri']}:{overlord['deployed']['image_tag']}"
     image_tag = f"{overlord['details'][0]['repositoryUri']}:{overlord['deployed']['image_tag']}"
     logging.info(f"[OVERLORD] Currently Deployed: {image_tag}")

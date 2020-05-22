@@ -2,6 +2,7 @@ import base64
 import boto3
 import docker
 import logging
+import os
 import requests
 import time
 import yaml
@@ -86,7 +87,7 @@ def finish():
 
 def deploy(instance_id):
     payload = {"id": instance_id}
-    repository_details = requests.get("https://deploy.davao.io/api/deploy/instance", params=payload)
+    repository_details = requests.get(OVERLORD_URL, params=payload)
     overlord = repository_details.json()
     if not overlord.get("deployed"):
         logging.info("No Deployment Details!")
@@ -159,6 +160,7 @@ DOCKER_DEFAULT_NAME="app"
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"
 AWS_REGION_ID="http://169.254.169.254/latest/meta-data/placement/availability-zone"
+OVERLORD_URL=os.environ.get('OVERLORD_URL')
 
 aws_ecr_client = boto3.client('ecr', region_name=aws_region_id())
 docker_client = docker.DockerClient(base_url='unix://run/docker.sock')

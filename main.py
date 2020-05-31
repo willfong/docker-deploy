@@ -68,6 +68,16 @@ def docker_stop_containers():
         logging.info("...")
         time.sleep(60)
 
+def docker_prune_all():
+    logging.info("Cleaning up all old Docker containers files...")
+    docker_client.containers.prune()
+    logging.info("Cleaning up all old Docker images files...")
+    docker_client.images.prune(filters={'dangling': False})
+    logging.info("Cleaning up all old Docker networks files...")
+    docker_client.networks.prune()
+    logging.info("Cleaning up all old Docker volumes files...")
+    docker_client.volumes.prune()
+
 def yaml_to_config(y):
     if not y:
         logging.info("Config is empty")
@@ -112,6 +122,7 @@ def deploy(instance_id):
         logging.debug("Logged into Docker!")
     if len(images) == 0:
         logging.info(f"[INFO] Fresh install. No previous instance of: {overlord['details'][0]['repositoryUri']}")
+        docker_prune_all()
         docker_pull_image(full_uri)
     else:
         found = False
@@ -125,6 +136,7 @@ def deploy(instance_id):
             logging.info("Image exists!")
         if not found:        
             logging.info(f"Image not found: {image_tag}")
+            docker_prune_all()
             docker_pull_image(full_uri)
     logging.info("Getting existing containers")
     containers = docker_containers()

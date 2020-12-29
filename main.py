@@ -95,6 +95,30 @@ def finish():
     logging.info("--------------------------------------")
     time.sleep(60)
 
+def deploy_local():
+    payload = {"repository": LOCAL_REPO}
+    repository_details = requests.get(OVERLORD_URL, params=payload).json()
+    repoUri = f"localhost:5000/{LOCAL_REPO}"
+    image_tag = f"{repoUri}:{repository_details['tag']}"
+    images = docker_find_images(image_tag)
+    docker_pull_image(image_tag)
+    logging.info("Getting existing containers")
+    containers = docker_containers()
+    currently_running = False
+    for container in containers:
+        logging.info(f"Checking Container: {container.name}")
+        for images in container.image.tags:
+            if image_tag in images:
+                currently_running = True
+    if currently_running:
+        logging.info("The current app is already running")
+    else:
+        logging.info("App is not running. Let's start it!")
+        #TODO: Check config before stopping
+        config = yaml_to_config(repository_details['config'])
+        logging.info(f"Using Config: {config}")
+        docker_start_container(image_tag, config)
+
 def deploy(instance_id):
     payload = {"id": instance_id}
     repository_details = requests.get(OVERLORD_URL, params=payload)
@@ -134,7 +158,7 @@ def deploy(instance_id):
                 found = True
         if found:
             logging.info("Image exists!")
-        if not found:        
+        if not found:
             logging.info(f"Image not found: {image_tag}")
             docker_prune_all()
             docker_pull_image(full_uri)
@@ -148,7 +172,7 @@ def deploy(instance_id):
         for images in container.image.tags:
             if image_tag in images:
                 currently_running = True
-    
+
     if currently_running:
         logging.info("The current app is already running")
     else:
@@ -157,25 +181,33 @@ def deploy(instance_id):
         config = yaml_to_config(overlord['deployed']['config'])
         logging.info(f"Using Config: {config}")
         docker_start_container(image_tag, config)
-    
+
 def main():
-    instance_id = aws_instance_id()
-    logging.info(f"Instance ID: {instance_id}")
-    while True:
-        deploy(instance_id)
-        finish()
+    if not LOCAL_REPO:
+        instance_id = aws_instance_id()
+        logging.info(f"Instance ID: {instance_id}")
+        while True:
+            deploy(instance_id)
+            finish()
+    else:
+        while True:
+            deploy_local()
+            finish()
 
 logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(message)s', level=logging.INFO)
 
 DOCKER_DEFAULT_NAME="app"
-
-# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
-AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"
-AWS_REGION_ID="http://169.254.169.254/latest/meta-data/placement/availability-zone"
 OVERLORD_URL=os.environ.get('OVERLORD_URL')
+LOCAL_REPO=os.environ.get('LOCAL_REPO')
+LOCAL_DOCKER_INSTANCE = os.environ.get("LOCAL_DOCKER") or 'unix://run/docker.sock'
 
-aws_ecr_client = boto3.client('ecr', region_name=aws_region_id())
-docker_client = docker.DockerClient(base_url='unix://run/docker.sock')
+docker_client = docker.DockerClient(base_url=LOCAL_DOCKER_INSTANCE)
+
+if not LOCAL_REPO:
+    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
+    AWS_INSTANCE_ID="http://169.254.169.254/latest/meta-data/instance-id"
+    AWS_REGION_ID="http://169.254.169.254/latest/meta-data/placement/availability-zone"
+    aws_ecr_client = boto3.client('ecr', region_name=aws_region_id())
 
 if __name__ == "__main__":
     main()
